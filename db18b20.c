@@ -280,3 +280,52 @@ unsigned char convert(unsigned char *str,int dat)
 	*str='\0';		//add str end flag
 	return len;		//return len(str)
 }
+
+/*******************************************************************************
+* Function Name     : Ds18b20ChangTemp
+* Feature		    : DS18B20 start convert temperature
+* Input             : None
+* Output            : None
+*******************************************************************************/
+void  Ds18b20ChangTemp()
+{
+	Ds18b20Init();
+	Delay1ms(1);                //delay 1ms,
+	Ds18b20WriteByte(0xcc);		//skip rom		 
+	Ds18b20WriteByte(0x44);	    //start temperature convert
+    //Delay1ms(1000);	        //等待转换成功，而如果你是一直刷着的话，就不用这个延时了 
+}
+
+/*******************************************************************************
+* Function Name     : Ds18b20ReadTempCom
+* Feature		    : send read temperature
+* Input             : None
+* Output            : None
+*******************************************************************************/
+void  Ds18b20ReadTempCom()
+{	
+	Ds18b20Init();
+	Delay1ms(1);
+	Ds18b20WriteByte(0xcc);	 //跳过ROM操作命令
+	Ds18b20WriteByte(0xbe);	 //发送读取温度命令
+}
+
+/*******************************************************************************
+* Function Name     : Ds18b20ReadTemp
+* Feature		    : read temperature
+* Input             : None
+* Output            : temperature
+*******************************************************************************/
+int Ds18b20ReadTemp()
+{
+	int temp = 0;
+	uchar tmh, tml;
+	Ds18b20ChangTemp();			 	//先写入转换命令
+	Ds18b20ReadTempCom();			//然后等待转换完后发送读取温度命令
+	tml = Ds18b20ReadByte();		//读取温度值共16位，先读低字节
+	tmh = Ds18b20ReadByte();		//再读高字节
+	temp = tmh;
+	temp <<= 8;
+	temp |= tml;
+	return temp;
+}
