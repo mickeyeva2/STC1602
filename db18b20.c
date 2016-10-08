@@ -9,7 +9,6 @@
 * Input             : None
 * Output            : None
 *******************************************************************************/
-/* delay function, time=t*10 us*/
 void delay_ten_us(uchar t)
 {
 	do
@@ -27,32 +26,24 @@ void delay_ten_us(uchar t)
 }
 
 /*******************************************************************************
-* Function Name     : Ds18b20Init
-* Feature		    : Initialization
+* Function Name     : Delay1ms
+* Feature		    : Delay 1 ms
 * Input             : None
-* Output            : return 1 while initialization succeed, else return 0
-* From Six Axis
+* Output            : None
 *******************************************************************************/
-uchar Ds18b20Init()
+void Delay1ms()		//@12.000MHz
 {
-	uchar i;
-	DSPORT = 0;			//pull bus down about 480us~960us
-	i = 70;	
-	while(i--);         //wait 642us
-	DSPORT = 1;			//pullup bus，if ds18b20 response, it will pull down after 15us~60us
-	i = 0;
-	while(DSPORT)	    //wait DS18B20 pull down the bus
-    {
-		Delay1ms(1);
-		i++;
-		if(i>5)         //wait at lease 5ms
-		{
-			return 0;   //init failed
-		}
-	
-	}
-	return 1;           //init success
+	unsigned char i, j;
+	_nop_();
+	_nop_();
+	i = 12;
+	j = 168;
+	do
+	{
+		while (--j);
+	} while (--i);
 }
+
 
 /*reset DS18B20's DQ bus, get ack, after that start read and write one time*/
 bool ds18b20_get_ack()
@@ -187,7 +178,9 @@ bool ds18b20_get_temp(int *temp)
 {
     bool ack;
     uchar LSB,MSB;                  //16bit temp,low byte and high byte
-    ack=ds18b20_get_ack();                  //reset bus,get ack
+//    ack=ds18b20_get_ack();                  //reset bus,get ack
+    uchar i;
+    i = Ds18b20Init();
 	lcd_printf(0,0,"get ack");
     if(ack==0)
     {                             //read temp when ds18b20 return low bit
@@ -282,15 +275,44 @@ unsigned char convert(unsigned char *str,int dat)
 }
 
 /*******************************************************************************
+* Function Name     : Ds18b20Init
+* Feature		    : Initialization
+* Input             : None
+* Output            : return 1 while initialization succeed, else return 0
+* From Six Axis
+*******************************************************************************/
+uchar Ds18b20Init()
+{
+	uchar i;
+	DSPORT = 0;			//pull bus down about 480us~960us
+	i = 70;	
+	while(i--);         //wait 642us
+	DSPORT = 1;			//pullup bus，if ds18b20 response, it will pull down after 15us~60us
+	i = 0;
+	while(DSPORT)	    //wait DS18B20 pull down the bus
+    {
+		Delay1ms(1);
+		i++;
+		if(i>5)         //wait at lease 5ms
+		{
+			return 0;   //init failed
+		}
+	
+	}
+	return 1;           //init success
+}
+
+/*******************************************************************************
 * Function Name     : Ds18b20ChangTemp
 * Feature		    : DS18B20 start convert temperature
 * Input             : None
 * Output            : None
+* From Six Axis
 *******************************************************************************/
 void  Ds18b20ChangTemp()
 {
 	Ds18b20Init();
-	Delay1ms(1);                //delay 1ms,
+	Delay1ms();                //delay 1ms,
 	Ds18b20WriteByte(0xcc);		//skip rom		 
 	Ds18b20WriteByte(0x44);	    //start temperature convert
     //Delay1ms(1000);	        //等待转换成功，而如果你是一直刷着的话，就不用这个延时了 
@@ -301,11 +323,12 @@ void  Ds18b20ChangTemp()
 * Feature		    : send read temperature
 * Input             : None
 * Output            : None
+* From Six Axis
 *******************************************************************************/
 void  Ds18b20ReadTempCom()
 {	
 	Ds18b20Init();
-	Delay1ms(1);
+	Delay1ms();
 	Ds18b20WriteByte(0xcc);	 //跳过ROM操作命令
 	Ds18b20WriteByte(0xbe);	 //发送读取温度命令
 }
@@ -315,6 +338,7 @@ void  Ds18b20ReadTempCom()
 * Feature		    : read temperature
 * Input             : None
 * Output            : temperature
+* From Six Axis
 *******************************************************************************/
 int Ds18b20ReadTemp()
 {
