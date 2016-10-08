@@ -8,7 +8,7 @@ Catch temperature from DS18B20, display it on LCD1602
 - Date      : 2016-09-04
 - Goal      : Display temperature on LCD1602
 
-1 4.7K~10K pullup resistor
-1 10K rotate potentiometer
-1 breadboard
-some dupont lines
+- 1 4.7K~10K pullup resistor
+* 1 10K rotate potentiometer
+* 1 breadboard
+* some dupont lines
