@@ -1,0 +1,6 @@
+".\Objects\STARTUP.obj",
+".\Objects\main.obj",
+".\Objects\1602.obj",
+".\Objects\db18b20.obj" 
+TO ".\Objects\stc1602" 
+PRINT(".\Listings\stc1602.m51") RAMSIZE(256) 

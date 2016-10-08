@@ -1,0 +1,100 @@
+C51 COMPILER V9.54   1602                                                                  09/06/2016 23:03:46 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE 1602
+OBJECT MODULE PLACED IN .\Objects\1602.obj
+COMPILER INVOKED BY: D:\Program Files\Keil\C51\BIN\C51.EXE 1602.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Li
+                    -stings\1602.lst) OBJECT(.\Objects\1602.obj)
+
+line level    source
+
+   1          //********1602 Function**********//
+   2          #include "config.h"
+   3          
+   4          void lcd_init();
+   5          //void lcd_display(unsigned char x,unsigned char y,unsigned char *str);
+   6          
+   7          /*waiting lcd ready*/
+   8          void lcd_busy(){
+   9   1          unsigned char stat;
+  10   1          LCD=0xFF;
+  11   1          EN=0;
+  12   1          RS=0;
+  13   1          RW=1;
+  14   1          do {
+  15   2              EN=1;
+  16   2              stat=LCD; //Read busy flag of lcd1602
+  17   2              EN=0;
+  18   2          }while (stat&0x80); //7th bit equ 1 as lcd busy, read busy flay until bit7=0
+  19   1      
+  20   1      }
+  21          
+  22          /*write cmd to lcd1602*/
+  23          void lcd_write_cmd(unsigned char cmd){
+  24   1          lcd_busy();
+  25   1          RS=0;
+  26   1          RW=0;
+  27   1          LCD=cmd;
+  28   1          EN=1;
+  29   1          EN=0;
+  30   1      }
+  31          
+  32          /*write data to lcd1602*/
+  33          void lcd_write_data(unsigned char dat){
+  34   1          lcd_busy();
+  35   1          RS=1;
+  36   1          RW=0;
+  37   1          LCD=dat;
+  38   1          EN=1;
+  39   1          EN=0;
+  40   1      }
+  41          
+  42          //void lcd_read_cmd(unsigned char cmd){
+  43          //}
+  44          
+  45          //void lcd_read_data(unsigned char dat){
+  46          //}
+  47          
+  48          void lcd_set_cursor(unsigned char x,unsigned char y){
+  49   1          unsigned char addr;
+  50   1          if(y==0){
+  51   2              addr=0x00+x;
+  52   2          }else{
+  53   2              addr=0x40+x;
+  54   2          }
+C51 COMPILER V9.54   1602                                                                  09/06/2016 23:03:46 PAGE 2   
+
+  55   1          lcd_write_cmd(addr|0x80);
+  56   1      }
+  57          
+  58          /*show str at (x,y)*/
+  59          void lcd_printf(unsigned char x,unsigned char y,unsigned char *str){
+  60   1              lcd_write_cmd(0x01);    //clear
+  61   1          lcd_set_cursor(x,y);
+  62   1          while(*str!='\0'){
+  63   2              lcd_write_data(*str++);
+  64   2          }
+  65   1      }
+  66          
+  67          /*init*/
+  68          void lcd_init(){
+  69   1          lcd_write_cmd(0x38); //16*2,5*7,8bit dataport
+  70   1          lcd_write_cmd(0x0C); //open ,close cursor
+  71   1          lcd_write_cmd(0x06); //addr+1
+  72   1          lcd_write_cmd(0x01); //clear
+  73   1      }
+  74          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    139    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       3
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

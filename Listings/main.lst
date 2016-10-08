@@ -1,0 +1,161 @@
+C51 COMPILER V9.54   MAIN                                                                  09/06/2016 23:03:46 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: D:\Program Files\Keil\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Li
+                    -stings\main.lst) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          /*MCU:      STC12C5AS60S2
+   2           *Senor:    DS18B20
+   3           *Display:  LCD1602
+   4           *Author:   Mickey
+   5           *Date:     2016-09-04
+   6           *Goal:     Display temperature on lcd1602.
+   7           */
+   8          
+   9          #include "config.h"
+  10          
+  11          extern void lcd_init();
+  12          extern void lcd_printf(unsigned char x,unsigned char y,unsigned char *str);
+  13          extern unsigned char convert(unsigned char *str,int dat);
+  14          extern bool ds18b20_start();
+  15          extern bool ds18b20_get_temp(int *temp);
+  16          
+  17          bool flag1s=0;                                  //1s timer flag
+  18          unsigned char T0RH=0;                       //Timer0 reload high byte
+  19          unsigned char T0RL=0;                       //Timer0 reload low byte
+  20          
+  21          //software delay 100ms
+  22          //void delay_100ms(){
+  23          //    unsigned char i, j, k;
+  24          
+  25          //      i = 5;
+  26          //      j = 144;
+  27          //      k = 71;
+  28          //      do{
+  29          //        do{
+  30          //                  while(--k);
+  31          //              }while(--j);
+  32          //      }while(--i);
+  33          //}
+  34          
+  35          void delay1000ms()              //@12.000MHz
+  36          {
+  37   1              unsigned char i, j, k;
+  38   1      
+  39   1              i = 46;
+  40   1              j = 153;
+  41   1              k = 245;
+  42   1              do
+  43   1              {
+  44   2                      do
+  45   2                      {
+  46   3                              while (--k);
+  47   3                      } while (--j);
+  48   2              } while (--i);
+  49   1      }
+  50          
+  51          /*
+  52           * config Timer0
+  53           * input:ms time
+  54           */
+C51 COMPILER V9.54   MAIN                                                                  09/06/2016 23:03:46 PAGE 2   
+
+  55          void config_timer0(unsigned int ms){
+  56   1              unsigned long tmp;                          //temperature
+  57   1              tmp=12000000/12;                            //timer fosc
+  58   1              tmp=(tmp*ms)/1000;                          //counter no.
+  59   1              tmp=65536-tmp;                              //reload counter
+  60   1              tmp=tmp+12;                                     //add delay error count
+  61   1              T0RH=(unsigned char)(tmp>>8);           //high byte
+  62   1              T0RL=(unsigned char)tmp;                //low byte
+  63   1              TMOD&=0xF0;                                     //clear Timer0 config
+  64   1              TMOD|=0x01;                                     //config Timer0 mode 1
+  65   1              TH0=T0RH;
+  66   1              TL0=T0RL;
+  67   1              ET0=1;                                          //enable  Timer0 intrupt
+  68   1              TR0=1;                                          //start Timer0
+  69   1      }
+  70          
+  71          
+  72          /*
+  73           * Timer0 interrupt 1
+  74           * return flag1s=1
+  75           */
+  76          void InterruptTimer() interrupt 1{
+  77   1          static unsigned char tmr1s=0;
+  78   1          TH0=T0RH;   //reload
+  79   1          TL0=T0RL;
+  80   1          tmr1s++;
+  81   1          if(tmr1s>100){//1s
+  82   2              tmr1s=0;
+  83   2              flag1s=1;
+  84   2          }
+  85   1      }
+  86          
+  87          /*
+  88           * main function
+  89           * show tempture on lcd1602
+  90           * refresh every 1s
+  91           */
+  92          void main(){
+  93   1              unsigned char str[]="hello world!";
+  94   1          bool res;
+  95   1              int temp;                                   //temperature
+  96   1              int tempInt,tempDec;                    //int and dec of temp
+  97   1              unsigned char len;
+  98   1              unsigned char str2[12];
+  99   1      
+ 100   1              EA=1;                                   //open interupt
+ 101   1              config_timer0(10);                      //timer0 10ms
+ 102   1              ds18b20_start();                        //start ds18b20
+ 103   1              lcd_init();                                 //init lcd1602
+ 104   1      
+ 105   1              lcd_printf(0,0,str);
+ 106   1              delay1000ms();                          //delay 1s
+ 107   1      
+ 108   1              while(1){
+ 109   2              if(flag1s){                         //refresh temp every 1s
+ 110   3                              lcd_printf(0,0,"start 18b20");
+ 111   3                              flag1s=0;
+ 112   3                              res=ds18b20_get_temp(&temp);        //read temp now
+ 113   3                              if(res){                                    //read temp and refresh
+ 114   4                                      lcd_printf(0,0,"get temp");
+ 115   4                                      tempInt=temp>>4;                    //temp int
+ 116   4                                      tempDec=temp&0xF;                   //temp dec
+C51 COMPILER V9.54   MAIN                                                                  09/06/2016 23:03:46 PAGE 3   
+
+ 117   4                                      len=convert(str2,tempInt);      //temp int convert to str
+ 118   4                                      str2[len++]='.';                        //add dot
+ 119   4                                      tempDec=(tempDec*10)/16;        //temp dec convert to 1bit
+ 120   4                                      str2[len++]=tempDec+'0';         //convert to ascii str
+ 121   4                                      while(len<6){                       //add space to len =6
+ 122   5                                              str2[len++]=' ';
+ 123   5                                      }
+ 124   4                                      str2[len]='\0';                     //add str end flag
+ 125   4                                      lcd_printf(0,0,str2);               //show str on lcd1602
+ 126   4                              }else{                                      //read error,display error
+ 127   4                                      lcd_printf(0,0,"error!");
+ 128   4                              }
+ 129   3                              ds18b20_start();                            //restart next temp convert
+ 130   3                      }
+ 131   2          }
+ 132   1      }
+ 133          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    380    ----
+   CONSTANT SIZE    =     41    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      3      33
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

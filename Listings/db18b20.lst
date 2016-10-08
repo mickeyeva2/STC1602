@@ -1,0 +1,160 @@
+C51 COMPILER V9.54   DB18B20                                                               09/06/2016 23:03:46 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE DB18B20
+OBJECT MODULE PLACED IN .\Objects\db18b20.obj
+COMPILER INVOKED BY: D:\Program Files\Keil\C51\BIN\C51.EXE db18b20.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.
+                    -\Listings\db18b20.lst) OBJECT(.\Objects\db18b20.obj)
+
+line level    source
+
+   1          //DS18B20 Function
+   2          
+   3          #include "config.h"
+   4          
+   5          /* delay function, time=t*10 us*/
+   6          void delay_ten_us(unsigned char t){
+   7   1              do{
+   8   2                      _nop_();
+   9   2              _nop_();
+  10   2              _nop_();
+  11   2              _nop_();
+  12   2              _nop_();
+  13   2              _nop_();
+  14   2              _nop_();
+  15   2              _nop_();
+  16   2          }while(--t);
+  17   1      }
+  18          
+  19          /*reset DS18B20's DQ bus, get ack, after that start read and write one time*/
+  20          bool ds18b20_get_ack(){
+  21   1          bool ack=1;
+  22   1              lcd_printf(0,0,"start get ack...");
+  23   1          delay_ten_us(30000);        
+  24   1          EA=0;                       //disable all interupt
+  25   1          DQ=0;                               //start 500us reset pulse
+  26   1          delay_ten_us(50);
+  27   1          DQ=1;
+  28   1          delay_ten_us(5);            //delay 60us
+  29   1          ack=DQ;                             //read the pulse
+  30   1          while(!DQ);
+  31   1          EA=1;               //enable all interput
+  32   1              if(ack==1){
+  33   2                      lcd_printf(0,0,"ack=1 fail");
+  34   2              }
+  35   1          return ack;
+  36   1      }
+  37          
+  38          /*write a bit to DS18B20, dat*/
+  39          void ds18b20_write_data(unsigned char dat){
+  40   1          unsigned char mask;
+  41   1          EA=0;
+  42   1          for(mask=0x01;mask!=0;mask<<=1){        //low bit first, 8bit in all
+  43   2              DQ=0;                          //2us low Voltage pusle
+  44   2              _nop_();
+  45   2              _nop_();
+  46   2              if((mask&dat)==0){                  //output dat
+  47   3                  DQ=0;
+  48   3              }else{
+  49   3                  DQ=1;
+  50   3              }
+  51   2          }
+  52   1          delay_ten_us(6);                        //delay 60us
+  53   1          DQ=1;                              //pull up DS18B20's DQ
+  54   1          EA=1;                                   //enable zhongduan
+C51 COMPILER V9.54   DB18B20                                                               09/06/2016 23:03:46 PAGE 2   
+
+  55   1      }
+  56          
+  57          /*read a byte from DS18B20, return the byte*/
+  58          unsigned char ds18b20_read_data(){
+  59   1          unsigned char dat;
+  60   1          unsigned char mask;
+  61   1          EA=0;
+  62   1          for(mask=0x01;mask!=0;mask<<=1){        //low bit first,8bit in all
+  63   2              DQ=0;                          //2us low voltage pusle
+  64   2              _nop_();
+  65   2              _nop_();
+  66   2              DQ=1;                          //finish low voltage pusle,wait ds18b20 output data
+  67   2              _nop_();
+  68   2              _nop_();
+  69   2              if(!DQ){                       //read DQ
+  70   3                  dat&=~mask;
+  71   3              }else{
+  72   3                  dat|=mask;
+  73   3              }
+  74   2              delay_ten_us(6);                    //delay 60us
+  75   2          }
+  76   1          EA=1;
+  77   1          return dat;
+  78   1      }
+  79          
+  80          //start temp convert, return true or false
+  81          bool ds18b20_start(){
+  82   1          bool ack;
+  83   1          ack=ds18b20_get_ack();                  //reset ds18b20'bus, get ds18b20's ack
+  84   1          if(ack==0){                             //if ds18b20 return 0, convert temp
+  85   2              ds18b20_write_data(0xCC);           //skip rom
+  86   2              ds18b20_write_data(0x44);           //covert temp
+  87   2          }
+  88   1          return ~ack;                            //ack==0 as success, return true value
+  89   1      }
+  90          
+  91          //read temp from ds18b20,return true if success
+  92          bool ds18b20_get_temp(int *temp){
+  93   1          bool ack;
+  94   1          unsigned char LSB,MSB;                  //16bit temp,low byte and high byte
+  95   1          ack=ds18b20_get_ack();                  //reset bus,get ack
+  96   1              lcd_printf(0,0,"get ack");
+  97   1          if(ack==0){                             //read temp when ds18b20 return low bit
+  98   2              ds18b20_write_data(0xCC);           //skip rom
+  99   2              ds18b20_write_data(0xBE);           //send read cmd
+ 100   2              LSB=ds18b20_read_data();            //low byte
+ 101   2              MSB=ds18b20_read_data();            //high byte
+ 102   2              *temp=((int)MSB<<8)+LSB;            //16bit int
+ 103   2          }
+ 104   1          return ~ack;                            //ack==0 as success
+ 105   1      }
+ 106          
+ 107          /*
+ 108           * convert int to str
+ 109           * input:str point,dat
+ 110           * output:return len(str)
+ 111           */
+ 112          unsigned char convert(unsigned char *str,int dat){
+ 113   1              signed char i=0;
+ 114   1              unsigned char len=0;
+ 115   1              unsigned char buf[6];
+ 116   1      
+C51 COMPILER V9.54   DB18B20                                                               09/06/2016 23:03:46 PAGE 3   
+
+ 117   1              if(dat<0){              //if fu shu,abs(dat),add '-' to str
+ 118   2                      dat=-dat;
+ 119   2                      *str++='-';
+ 120   2                      len++;
+ 121   2              }
+ 122   1              do{                     //convert it to shuzu, low bit first
+ 123   2                      buf[i++]=dat%10;
+ 124   2                      dat/=10;
+ 125   2              }while(dat>0);
+ 126   1              len+=i;                 //len(str)=i
+ 127   1              while(i-->0){           //convert shuzu to ascii
+ 128   2                      *str++=buf[i]+'0';
+ 129   2              }
+ 130   1              *str='\0';              //add str end flag
+ 131   1              return len;             //return len(str)
+ 132   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    406    ----
+   CONSTANT SIZE    =     36    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      16
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       3
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
